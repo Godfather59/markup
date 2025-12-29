@@ -32,7 +32,7 @@ function App() {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [fontSize, setFontSize] = useState(14);
   const [wordWrap, setWordWrap] = useState(false);
-  
+
   // Undo/Redo history
   const [history, setHistory] = useState<string[]>(['']);
   const [historyIndex, setHistoryIndex] = useState(0);
@@ -45,7 +45,7 @@ function App() {
     const savedTheme = localStorage.getItem('markup-beautifier-theme');
     const savedFontSize = localStorage.getItem('markup-beautifier-fontSize');
     const savedWordWrap = localStorage.getItem('markup-beautifier-wordWrap');
-    
+
     if (saved) {
       setContent(saved);
       setHistory([saved]);
@@ -125,7 +125,7 @@ function App() {
     try {
       const indentValue = getIndentString();
       let formatted: string;
-      
+
       switch (language) {
         case 'json':
           formatted = formatJSON(content, indentValue);
@@ -151,7 +151,7 @@ function App() {
         default:
           formatted = formatJSON(content, indentValue);
       }
-      
+
       updateContentWithHistory(formatted);
       toast.success(`${language.toUpperCase()} formatted successfully!`);
     } catch (error) {
@@ -171,7 +171,7 @@ function App() {
     setIsLoading(true);
     try {
       let minified: string;
-      
+
       switch (language) {
         case 'json': {
           const { minifyJSON } = await import('./utils/formatters');
@@ -203,7 +203,7 @@ function App() {
           minified = minifyJSON(content);
         }
       }
-      
+
       updateContentWithHistory(minified);
       toast.success(`${language.toUpperCase()} minified successfully!`);
     } catch (error) {
@@ -367,11 +367,11 @@ function App() {
 
     const result = replaceOne(content, searchTerm, replaceTerm, currentMatchIndex, matches);
     updateContentWithHistory(result.content);
-    
+
     // Recalculate matches after replacement
     const newMatches = findMatches(result.content, searchTerm, caseSensitive, useRegex);
     setCurrentMatchIndex(Math.min(currentMatchIndex, newMatches.length - 1));
-    
+
     if (newMatches.length === 0) {
       toast.success('Replaced (no more matches)');
       setSearchTerm('');
@@ -387,11 +387,11 @@ function App() {
 
     const result = replaceOne(content, searchTerm, replaceTerm, currentMatchIndex, matches);
     updateContentWithHistory(result.content);
-    
+
     // Recalculate matches after replacement
     const newMatches = findMatches(result.content, searchTerm, caseSensitive, useRegex);
     setCurrentMatchIndex(Math.min(result.newIndex, newMatches.length - 1));
-    
+
     if (newMatches.length === 0) {
       toast.success('Replaced (no more matches)');
       setSearchTerm('');
@@ -420,7 +420,7 @@ function App() {
       const text = e.target?.result as string;
       if (text) {
         updateContentWithHistory(text);
-        
+
         // Auto-detect language
         const trimmed = text.trim();
         if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
@@ -428,7 +428,7 @@ function App() {
         } else if (trimmed.startsWith('<')) {
           setLanguage('xml');
         }
-        
+
         toast.success('File loaded successfully!');
       }
     };
@@ -447,10 +447,10 @@ function App() {
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     const files = Array.from(e.dataTransfer.files);
     const file = files.find(f => f.name.endsWith('.json') || f.name.endsWith('.xml') || f.name.endsWith('.txt'));
-    
+
     if (file) {
       handleFileUpload(file);
     } else {
@@ -523,8 +523,9 @@ function App() {
     onToggleHelp: () => setShowShortcuts(prev => !prev),
   });
 
+  console.log('App version: 2025-12-29 15:08');
   return (
-    <div 
+    <div
       className={`h-screen w-screen flex flex-col ${isDarkMode ? 'bg-slate-900' : 'bg-gray-50'}`}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
@@ -589,9 +590,9 @@ function App() {
               onToggleRegex={() => setUseRegex((prev) => !prev)}
               onNext={handleNext}
               onPrevious={handlePrevious}
-            onReplaceOne={handleReplaceOne}
-            onReplaceOneAndNext={handleReplaceOneAndNext}
-            onReplaceAll={handleReplaceAll}
+              onReplaceOne={handleReplaceOne}
+              onReplaceOneAndNext={handleReplaceOneAndNext}
+              onReplaceAll={handleReplaceAll}
               onClose={() => setIsSearchVisible(false)}
             />
           </Suspense>
@@ -623,7 +624,7 @@ function App() {
       />
 
       <StatusBar characterCount={content.length} lineCount={lineCount} wordCount={wordCount} language={language} />
-      
+
       <Suspense fallback={null}>
         <LoadingSpinner isLoading={isLoading} />
       </Suspense>
@@ -638,13 +639,13 @@ function App() {
           indent={indent}
           isDarkMode={isDarkMode}
           onLanguageChange={setLanguage}
-        onIndentChange={setIndent}
-        onThemeChange={setIsDarkMode}
-        fontSize={fontSize}
-        wordWrap={wordWrap}
-        onFontSizeChange={setFontSize}
-        onWordWrapChange={setWordWrap}
-      />
+          onIndentChange={setIndent}
+          onThemeChange={setIsDarkMode}
+          fontSize={fontSize}
+          wordWrap={wordWrap}
+          onFontSizeChange={setFontSize}
+          onWordWrapChange={setWordWrap}
+        />
       </Suspense>
     </div>
   );
