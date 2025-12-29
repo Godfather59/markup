@@ -22,6 +22,8 @@ export const Editor: React.FC<EditorProps> = ({
     matches,
     currentMatchIndex,
 }) => {
+    const viewRef = React.useRef<EditorView | null>(null);
+
     const extensions = useMemo(() => {
         const langExtension = language === 'json' ? json() : xml();
 
@@ -48,6 +50,20 @@ export const Editor: React.FC<EditorProps> = ({
         }
     };
 
+    // Update selection when current match changes
+    React.useEffect(() => {
+        if (!viewRef.current || matches.length === 0) return;
+
+        const match = matches[currentMatchIndex];
+        if (match) {
+            viewRef.current.dispatch({
+                selection: { anchor: match.from, head: match.to },
+                scrollIntoView: true,
+                effects: EditorView.scrollIntoView(match.from, { y: 'center' })
+            });
+        }
+    }, [currentMatchIndex, matches]);
+
     return (
         <div className="flex-1 overflow-hidden" onPaste={handlePaste}>
             <CodeMirror
@@ -56,6 +72,9 @@ export const Editor: React.FC<EditorProps> = ({
                 theme={oneDark}
                 extensions={extensions}
                 onChange={onChange}
+                onCreateEditor={(view) => {
+                    viewRef.current = view;
+                }}
                 basicSetup={{
                     lineNumbers: true,
                     highlightActiveLineGutter: true,
