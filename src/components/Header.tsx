@@ -1,0 +1,72 @@
+import React from 'react';
+import { Sparkles, Trash2, Search as SearchIcon } from 'lucide-react';
+import { LanguageSelector } from './LanguageSelector';
+
+interface HeaderProps {
+    language: 'json' | 'xml';
+    onLanguageChange: (language: 'json' | 'xml') => void;
+    onFormat: () => void;
+    onClear: () => void;
+    onToggleSearch: () => void;
+    isSearchVisible: boolean;
+}
+
+export const Header: React.FC<HeaderProps> = ({
+    language,
+    onLanguageChange,
+    onFormat,
+    onClear,
+    onToggleSearch,
+    isSearchVisible,
+}) => {
+    return (
+        <div className="flex items-center justify-between px-6 py-4 bg-slate-900 border-b border-slate-800">
+            {/* Logo and Title */}
+            <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
+                    <Sparkles className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                    <h1 className="text-xl font-bold text-white">Markup Beautifier</h1>
+                    <p className="text-xs text-slate-400">Format JSON & XML with ease</p>
+                </div>
+            </div>
+
+            {/* Controls */}
+            <div className="flex items-center gap-4">
+                <LanguageSelector language={language} onChange={onLanguageChange} />
+
+                <div className="h-6 w-px bg-slate-700" />
+
+                {/* Action Buttons */}
+                <button
+                    onClick={onToggleSearch}
+                    className={`p-2 rounded-lg transition-all ${isSearchVisible
+                            ? 'bg-indigo-600 text-white'
+                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                        }`}
+                    title="Toggle Search (Ctrl+H)"
+                >
+                    <SearchIcon className="w-5 h-5" />
+                </button>
+
+                <button
+                    onClick={onFormat}
+                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all font-medium"
+                    title="Format (Ctrl+F)"
+                >
+                    <Sparkles className="w-4 h-4" />
+                    Beautify
+                </button>
+
+                <button
+                    onClick={onClear}
+                    className="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-all"
+                    title="Clear"
+                >
+                    <Trash2 className="w-5 h-5" />
+                </button>
+            </div>
+        </div>
+    );
+};

@@ -1,0 +1,246 @@
+import React, { useState, useMemo, useCallback } from 'react';
+import { Toaster, toast } from 'react-hot-toast';
+import { Header } from './components/Header';
+import { Editor } from './components/Editor';
+import { SearchWidget } from './components/SearchWidget';
+import { StatusBar } from './components/StatusBar';
+import { formatJSON, formatXML } from './utils/formatters';
+import { findMatches, replaceAll } from './utils/search';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+
+function App() {
+  const [content, setContent] = useState('');
+  const [language, setLanguage] = useState<'json' | 'xml'>('json');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [replaceTerm, setReplaceTerm] = useState('');
+  const [isSearchVisible, setIsSearchVisible] = useState(false);
+  const [isReplaceVisible, setIsReplaceVisible] = useState(false);
+  const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
+
+  // Compute matches
+  const matches = useMemo(() => {
+    return findMatches(content, searchTerm);
+  }, [content, searchTerm]);
+
+  // Reset match index when matches change
+  React.useEffect(() => {
+    if (matches.length > 0 && currentMatchIndex >= matches.length) {
+      setCurrentMatchIndex(0);
+    }
+  }, [matches.length, currentMatchIndex]);
+
+  // Format handler
+  const handleFormat = useCallback(() => {
+    if (!content.trim()) {
+      toast.error('Nothing to format');
+      return;
+    }
+
+    try {
+      const formatted = language === 'json' ? formatJSON(content) : formatXML(content);
+      setContent(formatted);
+      toast.success(`${language.toUpperCase()} formatted successfully!`);
+    } catch (error) {
+      toast.error((error as Error).message);
+    }
+  }, [content, language]);
+
+  // Clear handler
+  const handleClear = useCallback(() => {
+    setContent('');
+    setSearchTerm('');
+    setReplaceTerm('');
+    setCurrentMatchIndex(0);
+    toast.success('Editor cleared');
+  }, []);
+
+  // Toggle search
+  const handleToggleSearch = useCallback(() => {
+    setIsSearchVisible((prev) => !prev);
+    if (!isSearchVisible) {
+      setSearchTerm('');
+      setReplaceTerm('');
+      setIsReplaceVisible(false);
+    }
+  }, [isSearchVisible]);
+
+  // Clear search
+  const handleClearSearch = useCallback(() => {
+    setSearchTerm('');
+    setReplaceTerm('');
+    setCurrentMatchIndex(0);
+  }, []);
+
+  const workerRef = React.useRef<Worker | null>(null);
+
+  // Initialize worker
+  React.useEffect(() => {
+    workerRef.current = new Worker(new URL('./workers/format.worker.ts', import.meta.url), {
+      type: 'module'
+    });
+
+    workerRef.current.onmessage = (e) => {
+      const { type, content: formattedContent, language: detectedLang, error } = e.data;
+
+      if (type === 'success') {
+        setContent(formattedContent);
+        toast.success(`${detectedLang.toUpperCase()} formatted!`);
+      } else if (type === 'error') {
+        // Just show error, content is already raw
+        // toast.error(error); // Optional: don't spam errors on invalid partial pastes
+      }
+    };
+
+    return () => {
+      workerRef.current?.terminate();
+    };
+  }, []);
+
+  // Auto-detection and formatting on paste
+  const handlePaste = useCallback((pastedText: string) => {
+    const trimmed = pastedText.trim();
+
+    // NATIVE PASTE HANDLING:
+    // We do NOT call setContent(pastedText) here anymore.
+    // The native paste event in CodeMirror handles the insertion efficiently.
+    // onChange will fire and update the state naturally.
+
+    // Large file protection: Don't auto-format if > 1MB
+    // This prevents the "freeze" when replacing massive content
+    const MAX_AUTO_FORMAT_SIZE = 1000000; // 1MB
+
+    if (trimmed.length > MAX_AUTO_FORMAT_SIZE) {
+      if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+        setLanguage('json');
+        toast('Large JSON detected. Click Beautify to format.', { icon: '⚠️' });
+      } else if (trimmed.startsWith('<')) {
+        setLanguage('xml');
+        toast('Large XML detected. Click Beautify to format.', { icon: '⚠️' });
+      }
+      return;
+    }
+
+    // 2. Detect language and send to worker for background formatting
+    let detectedLang: 'json' | 'xml' | null = null;
+
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      detectedLang = 'json';
+      setLanguage('json');
+    } else if (trimmed.startsWith('<')) {
+      detectedLang = 'xml';
+      setLanguage('xml');
+    }
+
+    if (detectedLang && workerRef.current) {
+      // Send to worker - this happens off the main thread!
+      workerRef.current.postMessage({
+        type: 'format',
+        content: pastedText,
+        language: detectedLang,
+        id: Date.now()
+      });
+
+      toast('Formatting...', { icon: '⏳', duration: 1000 });
+    }
+  }, []);
+
+  // Search navigation
+  const handleNext = useCallback(() => {
+    if (matches.length > 0) {
+      setCurrentMatchIndex((prev) => (prev + 1) % matches.length);
+    }
+  }, [matches.length]);
+
+  const handlePrevious = useCallback(() => {
+    if (matches.length > 0) {
+      setCurrentMatchIndex((prev) => (prev - 1 + matches.length) % matches.length);
+    }
+  }, [matches.length]);
+
+  // Replace all
+  const handleReplaceAll = useCallback(() => {
+    if (!searchTerm) return;
+
+    const newContent = replaceAll(content, searchTerm, replaceTerm);
+    setContent(newContent);
+    const count = matches.length;
+    toast.success(`Replaced ${count} occurrence${count !== 1 ? 's' : ''}`);
+    setSearchTerm('');
+    setReplaceTerm('');
+  }, [content, searchTerm, replaceTerm, matches.length]);
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    onFormat: handleFormat,
+    onToggleSearch: handleToggleSearch,
+    onClearSearch: handleClearSearch,
+  });
+
+  return (
+    <div className="h-screen w-screen flex flex-col bg-slate-900">
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          style: {
+            background: '#1e293b',
+            color: '#fff',
+            border: '1px solid #334155',
+          },
+          success: {
+            iconTheme: {
+              primary: '#10b981',
+              secondary: '#fff',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#ef4444',
+              secondary: '#fff',
+            },
+          },
+        }}
+      />
+
+      <Header
+        language={language}
+        onLanguageChange={setLanguage}
+        onFormat={handleFormat}
+        onClear={handleClear}
+        onToggleSearch={handleToggleSearch}
+        isSearchVisible={isSearchVisible}
+      />
+
+      {isSearchVisible && (
+        <div className="relative">
+          <SearchWidget
+            searchTerm={searchTerm}
+            replaceTerm={replaceTerm}
+            isReplaceVisible={isReplaceVisible}
+            currentMatch={currentMatchIndex}
+            totalMatches={matches.length}
+            onSearchChange={setSearchTerm}
+            onReplaceChange={setReplaceTerm}
+            onToggleReplace={() => setIsReplaceVisible((prev) => !prev)}
+            onNext={handleNext}
+            onPrevious={handlePrevious}
+            onReplaceAll={handleReplaceAll}
+            onClose={() => setIsSearchVisible(false)}
+          />
+        </div>
+      )}
+
+      <Editor
+        value={content}
+        language={language}
+        onChange={setContent}
+        onPaste={handlePaste}
+        matches={matches}
+        currentMatchIndex={currentMatchIndex}
+      />
+
+      <StatusBar characterCount={content.length} language={language} />
+    </div>
+  );
+}
+
+export default App;
