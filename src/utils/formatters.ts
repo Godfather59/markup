@@ -1,16 +1,22 @@
+import { parseJSONError, parseXMLError } from './errorParser';
+
 /**
  * Format JSON with proper indentation
  * @param text - Raw JSON string
  * @param indent - Indentation (number of spaces or '\t' for tabs)
  * @returns Formatted JSON string
- * @throws Error if JSON is invalid
+ * @throws Error if JSON is invalid (with line number info)
  */
 export function formatJSON(text: string, indent: number | string = 2): string {
     try {
         const parsed = JSON.parse(text);
         return JSON.stringify(parsed, null, indent);
     } catch (error) {
-        throw new Error('Invalid JSON: ' + (error as Error).message);
+        const parsed = parseJSONError(error as Error, text);
+        const errorMsg = parsed.line 
+            ? `Invalid JSON at line ${parsed.line}: ${parsed.message}`
+            : `Invalid JSON: ${parsed.message}`;
+        throw new Error(errorMsg);
     }
 }
 
@@ -19,7 +25,7 @@ export function formatJSON(text: string, indent: number | string = 2): string {
  * @param text - Raw XML string
  * @param indent - Indentation string (e.g., '  ', '    ', '\t')
  * @returns Formatted XML string
- * @throws Error if XML is invalid
+ * @throws Error if XML is invalid (with line number info)
  */
 export function formatXML(text: string, indent: string = '  '): string {
     try {
@@ -28,7 +34,12 @@ export function formatXML(text: string, indent: string = '  '): string {
         const xmlDoc = parser.parseFromString(text, 'text/xml');
         const parserError = xmlDoc.querySelector('parsererror');
         if (parserError) {
-            throw new Error('Invalid XML');
+            const errorText = parserError.textContent || 'Invalid XML';
+            const parsed = parseXMLError(new Error(errorText), text);
+            const errorMsg = parsed.line 
+                ? `Invalid XML at line ${parsed.line}: ${parsed.message}`
+                : `Invalid XML: ${parsed.message}`;
+            throw new Error(errorMsg);
         }
 
         // Fast regex-based formatting
@@ -84,7 +95,11 @@ export function formatXML(text: string, indent: string = '  '): string {
 
         return lines.join('\n');
     } catch (error) {
-        throw new Error('Invalid XML: ' + (error as Error).message);
+        const parsed = parseXMLError(error as Error, text);
+        const errorMsg = parsed.line 
+            ? `Invalid XML at line ${parsed.line}: ${parsed.message}`
+            : `Invalid XML: ${parsed.message}`;
+        throw new Error(errorMsg);
     }
 }
 

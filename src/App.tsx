@@ -4,6 +4,7 @@ import { Header } from './components/Header';
 import { Editor } from './components/Editor';
 import { SearchWidget } from './components/SearchWidget';
 import { StatusBar } from './components/StatusBar';
+import { LoadingSpinner } from './components/LoadingSpinner';
 import { IndentationType } from './components/IndentationSelector';
 import { formatJSON, formatXML, minifyJSON, minifyXML } from './utils/formatters';
 import { findMatches, replaceAll, replaceOne } from './utils/search';
@@ -20,10 +21,38 @@ function App() {
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(true);
   
   // Undo/Redo history
   const [history, setHistory] = useState<string[]>(['']);
   const [historyIndex, setHistoryIndex] = useState(0);
+
+  // Load from localStorage on mount
+  React.useEffect(() => {
+    const saved = localStorage.getItem('markup-beautifier-content');
+    const savedLanguage = localStorage.getItem('markup-beautifier-language') as 'json' | 'xml' | null;
+    const savedIndent = localStorage.getItem('markup-beautifier-indent') as IndentationType | null;
+    const savedTheme = localStorage.getItem('markup-beautifier-theme');
+    
+    if (saved) {
+      setContent(saved);
+      setHistory([saved]);
+    }
+    if (savedLanguage) setLanguage(savedLanguage);
+    if (savedIndent) setIndent(savedIndent);
+    if (savedTheme === 'light') setIsDarkMode(false);
+  }, []);
+
+  // Save to localStorage
+  React.useEffect(() => {
+    if (content) {
+      localStorage.setItem('markup-beautifier-content', content);
+      localStorage.setItem('markup-beautifier-language', language);
+      localStorage.setItem('markup-beautifier-indent', String(indent));
+      localStorage.setItem('markup-beautifier-theme', isDarkMode ? 'dark' : 'light');
+    }
+  }, [content, language, indent, isDarkMode]);
 
   // Calculate line count
   const lineCount = useMemo(() => {
@@ -66,6 +95,7 @@ function App() {
       return;
     }
 
+    setIsLoading(true);
     try {
       const indentValue = getIndentString();
       const formatted = language === 'json' 
@@ -74,7 +104,9 @@ function App() {
       updateContentWithHistory(formatted);
       toast.success(`${language.toUpperCase()} formatted successfully!`);
     } catch (error) {
-      toast.error((error as Error).message);
+      toast.error((error as Error).message, { duration: 5000 });
+    } finally {
+      setIsLoading(false);
     }
   }, [content, language, getIndentString, updateContentWithHistory]);
 
@@ -85,12 +117,15 @@ function App() {
       return;
     }
 
+    setIsLoading(true);
     try {
       const minified = language === 'json' ? minifyJSON(content) : minifyXML(content);
       updateContentWithHistory(minified);
       toast.success(`${language.toUpperCase()} minified successfully!`);
     } catch (error) {
-      toast.error((error as Error).message);
+      toast.error((error as Error).message, { duration: 5000 });
+    } finally {
+      setIsLoading(false);
     }
   }, [content, language, updateContentWithHistory]);
 
@@ -257,6 +292,51 @@ function App() {
     setReplaceTerm('');
   }, [content, searchTerm, replaceTerm, caseSensitive, useRegex, matches.length, updateContentWithHistory]);
 
+  // File upload handler
+  const handleFileUpload = useCallback(async (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      if (text) {
+        updateContentWithHistory(text);
+        
+        // Auto-detect language
+        const trimmed = text.trim();
+        if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+          setLanguage('json');
+        } else if (trimmed.startsWith('<')) {
+          setLanguage('xml');
+        }
+        
+        toast.success('File loaded successfully!');
+      }
+    };
+    reader.onerror = () => {
+      toast.error('Failed to read file');
+    };
+    reader.readAsText(file);
+  }, [updateContentWithHistory]);
+
+  // Drag and drop handlers
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const files = Array.from(e.dataTransfer.files);
+    const file = files.find(f => f.name.endsWith('.json') || f.name.endsWith('.xml') || f.name.endsWith('.txt'));
+    
+    if (file) {
+      handleFileUpload(file);
+    } else {
+      toast.error('Please drop a JSON or XML file');
+    }
+  }, [handleFileUpload]);
+
   // Copy to clipboard
   const handleCopy = useCallback(async () => {
     if (!content.trim()) {
@@ -322,7 +402,11 @@ function App() {
   });
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-slate-900">
+    <div 
+      className={`h-screen w-screen flex flex-col ${isDarkMode ? 'bg-slate-900' : 'bg-gray-50'}`}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
       <Toaster
         position="top-right"
         toastOptions={{
@@ -349,6 +433,7 @@ function App() {
       <Header
         language={language}
         indent={indent}
+        isDarkMode={isDarkMode}
         onLanguageChange={setLanguage}
         onIndentChange={setIndent}
         onFormat={handleFormat}
@@ -357,6 +442,8 @@ function App() {
         onToggleSearch={handleToggleSearch}
         onCopy={handleCopy}
         onDownload={handleDownload}
+        onFileUpload={handleFileUpload}
+        onToggleTheme={() => setIsDarkMode(prev => !prev)}
         isSearchVisible={isSearchVisible}
         hasContent={!!content.trim()}
       />
@@ -407,6 +494,8 @@ function App() {
       />
 
       <StatusBar characterCount={content.length} lineCount={lineCount} language={language} />
+      
+      <LoadingSpinner isLoading={isLoading} />
     </div>
   );
 }

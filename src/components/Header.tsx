@@ -1,11 +1,12 @@
-import React from 'react';
-import { Sparkles, Trash2, Search as SearchIcon, Copy, Download, Minus } from 'lucide-react';
+import React, { useRef } from 'react';
+import { Sparkles, Trash2, Search as SearchIcon, Copy, Download, Minus, Upload, Sun, Moon } from 'lucide-react';
 import { LanguageSelector } from './LanguageSelector';
 import { IndentationSelector, IndentationType } from './IndentationSelector';
 
 interface HeaderProps {
     language: 'json' | 'xml';
     indent: IndentationType;
+    isDarkMode: boolean;
     onLanguageChange: (language: 'json' | 'xml') => void;
     onIndentChange: (indent: IndentationType) => void;
     onFormat: () => void;
@@ -14,6 +15,8 @@ interface HeaderProps {
     onToggleSearch: () => void;
     onCopy: () => void;
     onDownload: () => void;
+    onFileUpload: (file: File) => void;
+    onToggleTheme: () => void;
     isSearchVisible: boolean;
     hasContent: boolean;
 }
@@ -21,6 +24,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
     language,
     indent,
+    isDarkMode,
     onLanguageChange,
     onIndentChange,
     onFormat,
@@ -29,9 +33,23 @@ export const Header: React.FC<HeaderProps> = ({
     onToggleSearch,
     onCopy,
     onDownload,
+    onFileUpload,
+    onToggleTheme,
     isSearchVisible,
     hasContent,
 }) => {
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            onFileUpload(file);
+        }
+        // Reset input so same file can be selected again
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
     return (
         <div className="flex items-center justify-between px-6 py-4 bg-slate-900 border-b border-slate-800">
             {/* Logo and Title */}
@@ -53,6 +71,21 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="h-6 w-px bg-slate-700" />
 
                 {/* Action Buttons */}
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".json,.xml,.txt"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                />
+                <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-all"
+                    title="Upload File"
+                >
+                    <Upload className="w-5 h-5" />
+                </button>
+
                 <button
                     onClick={onCopy}
                     disabled={!hasContent}
@@ -69,6 +102,14 @@ export const Header: React.FC<HeaderProps> = ({
                     title="Download File"
                 >
                     <Download className="w-5 h-5" />
+                </button>
+
+                <button
+                    onClick={onToggleTheme}
+                    className="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-all"
+                    title="Toggle Theme"
+                >
+                    {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                 </button>
 
                 <button
