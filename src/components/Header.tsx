@@ -1,23 +1,34 @@
 import React from 'react';
-import { Sparkles, Trash2, Search as SearchIcon } from 'lucide-react';
+import { Sparkles, Trash2, Search as SearchIcon, Copy, Download } from 'lucide-react';
 import { LanguageSelector } from './LanguageSelector';
+import { IndentationSelector, IndentationType } from './IndentationSelector';
 
 interface HeaderProps {
     language: 'json' | 'xml';
+    indent: IndentationType;
     onLanguageChange: (language: 'json' | 'xml') => void;
+    onIndentChange: (indent: IndentationType) => void;
     onFormat: () => void;
     onClear: () => void;
     onToggleSearch: () => void;
+    onCopy: () => void;
+    onDownload: () => void;
     isSearchVisible: boolean;
+    hasContent: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
     language,
+    indent,
     onLanguageChange,
+    onIndentChange,
     onFormat,
     onClear,
     onToggleSearch,
+    onCopy,
+    onDownload,
     isSearchVisible,
+    hasContent,
 }) => {
     return (
         <div className="flex items-center justify-between px-6 py-4 bg-slate-900 border-b border-slate-800">
@@ -35,10 +46,29 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Controls */}
             <div className="flex items-center gap-4">
                 <LanguageSelector language={language} onChange={onLanguageChange} />
+                <IndentationSelector indent={indent} onChange={onIndentChange} />
 
                 <div className="h-6 w-px bg-slate-700" />
 
                 {/* Action Buttons */}
+                <button
+                    onClick={onCopy}
+                    disabled={!hasContent}
+                    className="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                    title="Copy to Clipboard"
+                >
+                    <Copy className="w-5 h-5" />
+                </button>
+
+                <button
+                    onClick={onDownload}
+                    disabled={!hasContent}
+                    className="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                    title="Download File"
+                >
+                    <Download className="w-5 h-5" />
+                </button>
+
                 <button
                     onClick={onToggleSearch}
                     className={`p-2 rounded-lg transition-all ${isSearchVisible

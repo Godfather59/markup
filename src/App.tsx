@@ -4,6 +4,7 @@ import { Header } from './components/Header';
 import { Editor } from './components/Editor';
 import { SearchWidget } from './components/SearchWidget';
 import { StatusBar } from './components/StatusBar';
+import { IndentationType } from './components/IndentationSelector';
 import { formatJSON, formatXML } from './utils/formatters';
 import { findMatches, replaceAll } from './utils/search';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
@@ -11,11 +12,18 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 function App() {
   const [content, setContent] = useState('');
   const [language, setLanguage] = useState<'json' | 'xml'>('json');
+  const [indent, setIndent] = useState<IndentationType>(2);
   const [searchTerm, setSearchTerm] = useState('');
   const [replaceTerm, setReplaceTerm] = useState('');
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [isReplaceVisible, setIsReplaceVisible] = useState(false);
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
+
+  // Calculate line count
+  const lineCount = useMemo(() => {
+    if (!content) return 0;
+    return content.split('\n').length;
+  }, [content]);
 
   // Compute matches
   const matches = useMemo(() => {
@@ -29,6 +37,12 @@ function App() {
     }
   }, [matches.length, currentMatchIndex]);
 
+  // Get indentation string for formatting
+  const getIndentString = useCallback(() => {
+    if (indent === 'tab') return '\t';
+    return indent === 2 ? 2 : 4;
+  }, [indent]);
+
   // Format handler
   const handleFormat = useCallback(() => {
     if (!content.trim()) {
@@ -37,13 +51,16 @@ function App() {
     }
 
     try {
-      const formatted = language === 'json' ? formatJSON(content) : formatXML(content);
+      const indentValue = getIndentString();
+      const formatted = language === 'json' 
+        ? formatJSON(content, indentValue) 
+        : formatXML(content, typeof indentValue === 'number' ? ' '.repeat(indentValue) : indentValue);
       setContent(formatted);
       toast.success(`${language.toUpperCase()} formatted successfully!`);
     } catch (error) {
       toast.error((error as Error).message);
     }
-  }, [content, language]);
+  }, [content, language, getIndentString]);
 
   // Clear handler
   const handleClear = useCallback(() => {
@@ -137,6 +154,7 @@ function App() {
         type: 'format',
         content: pastedText,
         language: detectedLang,
+        indent: indent,
         id: Date.now()
       });
 
@@ -168,6 +186,46 @@ function App() {
     setSearchTerm('');
     setReplaceTerm('');
   }, [content, searchTerm, replaceTerm, matches.length]);
+
+  // Copy to clipboard
+  const handleCopy = useCallback(async () => {
+    if (!content.trim()) {
+      toast.error('Nothing to copy');
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(content);
+      toast.success('Copied to clipboard!');
+    } catch (error) {
+      toast.error('Failed to copy to clipboard');
+    }
+  }, [content]);
+
+  // Download file
+  const handleDownload = useCallback(() => {
+    if (!content.trim()) {
+      toast.error('Nothing to download');
+      return;
+    }
+
+    try {
+      const extension = language === 'json' ? 'json' : 'xml';
+      const mimeType = language === 'json' ? 'application/json' : 'application/xml';
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `formatted.${extension}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('File downloaded!');
+    } catch (error) {
+      toast.error('Failed to download file');
+    }
+  }, [content, language]);
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
@@ -203,11 +261,16 @@ function App() {
 
       <Header
         language={language}
+        indent={indent}
         onLanguageChange={setLanguage}
+        onIndentChange={setIndent}
         onFormat={handleFormat}
         onClear={handleClear}
         onToggleSearch={handleToggleSearch}
+        onCopy={handleCopy}
+        onDownload={handleDownload}
         isSearchVisible={isSearchVisible}
+        hasContent={!!content.trim()}
       />
 
       {isSearchVisible && (
@@ -238,7 +301,7 @@ function App() {
         currentMatchIndex={currentMatchIndex}
       />
 
-      <StatusBar characterCount={content.length} language={language} />
+      <StatusBar characterCount={content.length} lineCount={lineCount} language={language} />
     </div>
   );
 }

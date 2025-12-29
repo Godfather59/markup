@@ -1,15 +1,15 @@
 // Format JSON with proper indentation
-function formatJSON(text: string): string {
+function formatJSON(text: string, indent: number | string = 2): string {
     try {
         const parsed = JSON.parse(text);
-        return JSON.stringify(parsed, null, 2);
+        return JSON.stringify(parsed, null, indent);
     } catch (error) {
         throw new Error('Invalid JSON: ' + (error as Error).message);
     }
 }
 
 // Format XML with proper indentation (Regex-based, Worker-safe)
-function formatXML(text: string): string {
+function formatXML(text: string, indent: string = '  '): string {
     try {
         // Quick validation with DOMParser
         const parser = new DOMParser();
@@ -26,7 +26,7 @@ function formatXML(text: string): string {
         formatted = formatted.replace(/>\s*</g, '><');
 
         // Add newlines and indentation
-        let indent = 0;
+        let indentLevel = 0;
         const lines: string[] = [];
 
         // Split by tags
@@ -40,12 +40,12 @@ function formatXML(text: string): string {
             if (part.startsWith('<')) {
                 // Closing tag
                 if (part.startsWith('</')) {
-                    indent = Math.max(0, indent - 1);
-                    lines.push('  '.repeat(indent) + part);
+                    indentLevel = Math.max(0, indentLevel - 1);
+                    lines.push(indent.repeat(indentLevel) + part);
                 }
                 // Self-closing tag
                 else if (part.endsWith('/>') || part.match(/<\w+[^>]*\/>/)) {
-                    lines.push('  '.repeat(indent) + part);
+                    lines.push(indent.repeat(indentLevel) + part);
                 }
                 // Opening tag
                 else if (part.startsWith('<?')) {
@@ -54,18 +54,18 @@ function formatXML(text: string): string {
                 }
                 else if (part.startsWith('<!')) {
                     // Comment or DOCTYPE
-                    lines.push('  '.repeat(indent) + part);
+                    lines.push(indent.repeat(indentLevel) + part);
                 }
                 else {
-                    lines.push('  '.repeat(indent) + part);
-                    indent++;
+                    lines.push(indent.repeat(indentLevel) + part);
+                    indentLevel++;
                 }
             }
             // Text content
             else {
                 const trimmed = part.trim();
                 if (trimmed) {
-                    lines.push('  '.repeat(indent) + trimmed);
+                    lines.push(indent.repeat(indentLevel) + trimmed);
                 }
             }
         }
@@ -78,15 +78,17 @@ function formatXML(text: string): string {
 
 // Handle messages from main thread
 self.onmessage = (e: MessageEvent) => {
-    const { type, content, language, id } = e.data;
+    const { type, content, language, indent, id } = e.data;
 
     if (type === 'format') {
         try {
             let formatted = content;
             if (language === 'json') {
-                formatted = formatJSON(content);
+                const indentValue = indent === 'tab' ? '\t' : (indent === 4 ? 4 : 2);
+                formatted = formatJSON(content, indentValue);
             } else if (language === 'xml') {
-                formatted = formatXML(content);
+                const indentValue = indent === 'tab' ? '\t' : (indent === 4 ? '    ' : '  ');
+                formatted = formatXML(content, indentValue);
             }
 
             self.postMessage({
