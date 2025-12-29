@@ -27,8 +27,21 @@ export const Editor: React.FC<EditorProps> = ({
     const extensions = useMemo(() => {
         const langExtension = language === 'json' ? json() : xml();
 
+        // Custom paste handler to capture text for auto-detection
+        // IMPORTANT: We return 'false' to allow CodeMirror's native paste behavior to continue
+        const pasteHandler = EditorView.domEventHandlers({
+            paste(event) {
+                const text = event.clipboardData?.getData('text');
+                if (text) {
+                    onPaste(text);
+                }
+                return false;
+            }
+        });
+
         return [
             langExtension,
+            pasteHandler,
             EditorView.theme({
                 '.cm-search-match': {
                     backgroundColor: 'rgba(251, 191, 36, 0.3)',
@@ -40,15 +53,11 @@ export const Editor: React.FC<EditorProps> = ({
                 },
             }),
         ];
-    }, [language]);
+    }, [language, onPaste]);
 
     // Handle paste event for auto-detection only
-    const handlePaste = (event: React.ClipboardEvent) => {
-        const pastedText = event.clipboardData.getData('text');
-        if (pastedText) {
-            onPaste(pastedText);
-        }
-    };
+    // (Removed prop-based handler as we use the extension now)
+    /* const handlePaste = ... */
 
     // Update selection when current match changes
     React.useEffect(() => {
@@ -65,7 +74,7 @@ export const Editor: React.FC<EditorProps> = ({
     }, [currentMatchIndex, matches]);
 
     return (
-        <div className="flex-1 overflow-hidden" onPaste={handlePaste}>
+        <div className="flex-1 overflow-hidden">
             <CodeMirror
                 value={value}
                 height="100%"
