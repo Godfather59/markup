@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Trash2, Search as SearchIcon, Copy, Download } from 'lucide-react';
+import { Sparkles, Trash2, Search as SearchIcon, Copy, Download, Minus } from 'lucide-react';
 import { LanguageSelector } from './LanguageSelector';
 import { IndentationSelector, IndentationType } from './IndentationSelector';
 
@@ -9,6 +9,7 @@ interface HeaderProps {
     onLanguageChange: (language: 'json' | 'xml') => void;
     onIndentChange: (indent: IndentationType) => void;
     onFormat: () => void;
+    onMinify: () => void;
     onClear: () => void;
     onToggleSearch: () => void;
     onCopy: () => void;
@@ -23,6 +24,7 @@ export const Header: React.FC<HeaderProps> = ({
     onLanguageChange,
     onIndentChange,
     onFormat,
+    onMinify,
     onClear,
     onToggleSearch,
     onCopy,
@@ -82,11 +84,22 @@ export const Header: React.FC<HeaderProps> = ({
 
                 <button
                     onClick={onFormat}
-                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all font-medium"
+                    disabled={!hasContent}
+                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all font-medium disabled:opacity-30 disabled:cursor-not-allowed"
                     title="Format (Ctrl+B)"
                 >
                     <Sparkles className="w-4 h-4" />
                     Beautify
+                </button>
+
+                <button
+                    onClick={onMinify}
+                    disabled={!hasContent}
+                    className="flex items-center gap-2 px-3 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-all font-medium disabled:opacity-30 disabled:cursor-not-allowed"
+                    title="Minify"
+                >
+                    <Minus className="w-4 h-4" />
+                    Minify
                 </button>
 
                 <button

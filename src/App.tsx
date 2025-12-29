@@ -5,8 +5,8 @@ import { Editor } from './components/Editor';
 import { SearchWidget } from './components/SearchWidget';
 import { StatusBar } from './components/StatusBar';
 import { IndentationType } from './components/IndentationSelector';
-import { formatJSON, formatXML } from './utils/formatters';
-import { findMatches, replaceAll } from './utils/search';
+import { formatJSON, formatXML, minifyJSON, minifyXML } from './utils/formatters';
+import { findMatches, replaceAll, replaceOne } from './utils/search';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
 function App() {
@@ -17,7 +17,13 @@ function App() {
   const [replaceTerm, setReplaceTerm] = useState('');
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [isReplaceVisible, setIsReplaceVisible] = useState(false);
+  const [caseSensitive, setCaseSensitive] = useState(false);
+  const [useRegex, setUseRegex] = useState(false);
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
+  
+  // Undo/Redo history
+  const [history, setHistory] = useState<string[]>(['']);
+  const [historyIndex, setHistoryIndex] = useState(0);
 
   // Calculate line count
   const lineCount = useMemo(() => {
@@ -27,8 +33,18 @@ function App() {
 
   // Compute matches
   const matches = useMemo(() => {
-    return findMatches(content, searchTerm);
-  }, [content, searchTerm]);
+    return findMatches(content, searchTerm, caseSensitive, useRegex);
+  }, [content, searchTerm, caseSensitive, useRegex]);
+
+  // Update content and add to history
+  const updateContentWithHistory = useCallback((newContent: string) => {
+    setContent(newContent);
+    // Remove any history after current index (when undoing and then making changes)
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push(newContent);
+    setHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+  }, [history, historyIndex]);
 
   // Reset match index when matches change
   React.useEffect(() => {
@@ -55,21 +71,55 @@ function App() {
       const formatted = language === 'json' 
         ? formatJSON(content, indentValue) 
         : formatXML(content, typeof indentValue === 'number' ? ' '.repeat(indentValue) : indentValue);
-      setContent(formatted);
+      updateContentWithHistory(formatted);
       toast.success(`${language.toUpperCase()} formatted successfully!`);
     } catch (error) {
       toast.error((error as Error).message);
     }
-  }, [content, language, getIndentString]);
+  }, [content, language, getIndentString, updateContentWithHistory]);
+
+  // Minify handler
+  const handleMinify = useCallback(() => {
+    if (!content.trim()) {
+      toast.error('Nothing to minify');
+      return;
+    }
+
+    try {
+      const minified = language === 'json' ? minifyJSON(content) : minifyXML(content);
+      updateContentWithHistory(minified);
+      toast.success(`${language.toUpperCase()} minified successfully!`);
+    } catch (error) {
+      toast.error((error as Error).message);
+    }
+  }, [content, language, updateContentWithHistory]);
+
+  // Undo handler
+  const handleUndo = useCallback(() => {
+    if (historyIndex > 0) {
+      const newIndex = historyIndex - 1;
+      setHistoryIndex(newIndex);
+      setContent(history[newIndex]);
+    }
+  }, [history, historyIndex]);
+
+  // Redo handler
+  const handleRedo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      const newIndex = historyIndex + 1;
+      setHistoryIndex(newIndex);
+      setContent(history[newIndex]);
+    }
+  }, [history, historyIndex]);
 
   // Clear handler
   const handleClear = useCallback(() => {
-    setContent('');
+    updateContentWithHistory('');
     setSearchTerm('');
     setReplaceTerm('');
     setCurrentMatchIndex(0);
     toast.success('Editor cleared');
-  }, []);
+  }, [updateContentWithHistory]);
 
   // Toggle search
   const handleToggleSearch = useCallback(() => {
@@ -100,7 +150,7 @@ function App() {
       const { type, content: formattedContent, language: detectedLang } = e.data;
 
       if (type === 'success') {
-        setContent(formattedContent);
+        updateContentWithHistory(formattedContent);
         toast.success(`${detectedLang.toUpperCase()} formatted!`);
       } else if (type === 'error') {
         // Just show error, content is already raw
@@ -175,17 +225,37 @@ function App() {
     }
   }, [matches.length]);
 
+  // Replace one
+  const handleReplaceOne = useCallback(() => {
+    if (!searchTerm || matches.length === 0) return;
+
+    const result = replaceOne(content, searchTerm, replaceTerm, currentMatchIndex, matches);
+    updateContentWithHistory(result.content);
+    
+    // Recalculate matches after replacement
+    const newMatches = findMatches(result.content, searchTerm, caseSensitive, useRegex);
+    setCurrentMatchIndex(Math.min(result.newIndex, newMatches.length - 1));
+    
+    if (newMatches.length === 0) {
+      toast.success('Replaced (no more matches)');
+      setSearchTerm('');
+      setReplaceTerm('');
+    } else {
+      toast.success(`Replaced (${newMatches.length} remaining)`);
+    }
+  }, [content, searchTerm, replaceTerm, currentMatchIndex, matches, caseSensitive, useRegex, updateContentWithHistory]);
+
   // Replace all
   const handleReplaceAll = useCallback(() => {
     if (!searchTerm) return;
 
-    const newContent = replaceAll(content, searchTerm, replaceTerm);
-    setContent(newContent);
+    const newContent = replaceAll(content, searchTerm, replaceTerm, caseSensitive, useRegex);
+    updateContentWithHistory(newContent);
     const count = matches.length;
     toast.success(`Replaced ${count} occurrence${count !== 1 ? 's' : ''}`);
     setSearchTerm('');
     setReplaceTerm('');
-  }, [content, searchTerm, replaceTerm, matches.length]);
+  }, [content, searchTerm, replaceTerm, caseSensitive, useRegex, matches.length, updateContentWithHistory]);
 
   // Copy to clipboard
   const handleCopy = useCallback(async () => {
@@ -227,11 +297,28 @@ function App() {
     }
   }, [content, language]);
 
+  // Track content changes for undo/redo (only when typing directly)
+  React.useEffect(() => {
+    // Only add to history if content changed from typing (not from undo/redo/format)
+    if (content !== history[historyIndex] && historyIndex === history.length - 1) {
+      const newHistory = [...history, content];
+      setHistory(newHistory);
+      setHistoryIndex(newHistory.length - 1);
+      // Limit history size to prevent memory issues
+      if (newHistory.length > 50) {
+        setHistory(newHistory.slice(-50));
+        setHistoryIndex(49);
+      }
+    }
+  }, [content]);
+
   // Keyboard shortcuts
   useKeyboardShortcuts({
     onFormat: handleFormat,
     onToggleSearch: handleToggleSearch,
     onClearSearch: handleClearSearch,
+    onUndo: handleUndo,
+    onRedo: handleRedo,
   });
 
   return (
@@ -265,6 +352,7 @@ function App() {
         onLanguageChange={setLanguage}
         onIndentChange={setIndent}
         onFormat={handleFormat}
+        onMinify={handleMinify}
         onClear={handleClear}
         onToggleSearch={handleToggleSearch}
         onCopy={handleCopy}
@@ -279,13 +367,18 @@ function App() {
             searchTerm={searchTerm}
             replaceTerm={replaceTerm}
             isReplaceVisible={isReplaceVisible}
+            caseSensitive={caseSensitive}
+            useRegex={useRegex}
             currentMatch={currentMatchIndex}
             totalMatches={matches.length}
             onSearchChange={setSearchTerm}
             onReplaceChange={setReplaceTerm}
             onToggleReplace={() => setIsReplaceVisible((prev) => !prev)}
+            onToggleCaseSensitive={() => setCaseSensitive((prev) => !prev)}
+            onToggleRegex={() => setUseRegex((prev) => !prev)}
             onNext={handleNext}
             onPrevious={handlePrevious}
+            onReplaceOne={handleReplaceOne}
             onReplaceAll={handleReplaceAll}
             onClose={() => setIsSearchVisible(false)}
           />
@@ -295,7 +388,19 @@ function App() {
       <Editor
         value={content}
         language={language}
-        onChange={setContent}
+        onChange={(newContent) => {
+          setContent(newContent);
+          // Update history for typing
+          if (historyIndex === history.length - 1) {
+            const newHistory = [...history, newContent];
+            setHistory(newHistory);
+            setHistoryIndex(newHistory.length - 1);
+            if (newHistory.length > 50) {
+              setHistory(newHistory.slice(-50));
+              setHistoryIndex(49);
+            }
+          }
+        }}
         onPaste={handlePaste}
         matches={matches}
         currentMatchIndex={currentMatchIndex}

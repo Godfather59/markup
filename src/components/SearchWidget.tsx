@@ -1,17 +1,22 @@
 import React from 'react';
-import { Search, X, ChevronUp, ChevronDown, Replace } from 'lucide-react';
+import { Search, X, ChevronUp, ChevronDown, Replace, Type, Hash } from 'lucide-react';
 
 interface SearchWidgetProps {
     searchTerm: string;
     replaceTerm: string;
     isReplaceVisible: boolean;
+    caseSensitive: boolean;
+    useRegex: boolean;
     currentMatch: number;
     totalMatches: number;
     onSearchChange: (value: string) => void;
     onReplaceChange: (value: string) => void;
     onToggleReplace: () => void;
+    onToggleCaseSensitive: () => void;
+    onToggleRegex: () => void;
     onNext: () => void;
     onPrevious: () => void;
+    onReplaceOne: () => void;
     onReplaceAll: () => void;
     onClose: () => void;
 }
@@ -20,13 +25,18 @@ export const SearchWidget: React.FC<SearchWidgetProps> = ({
     searchTerm,
     replaceTerm,
     isReplaceVisible,
+    caseSensitive,
+    useRegex,
     currentMatch,
     totalMatches,
     onSearchChange,
     onReplaceChange,
     onToggleReplace,
+    onToggleCaseSensitive,
+    onToggleRegex,
     onNext,
     onPrevious,
+    onReplaceOne,
     onReplaceAll,
     onClose,
 }) => {
@@ -82,6 +92,26 @@ export const SearchWidget: React.FC<SearchWidgetProps> = ({
                     </button>
                 </div>
 
+                {/* Case Sensitive Toggle */}
+                <button
+                    onClick={onToggleCaseSensitive}
+                    className={`p-1.5 rounded ${caseSensitive ? 'bg-indigo-600 text-white' : 'hover:bg-slate-700'
+                        }`}
+                    title="Case Sensitive"
+                >
+                    <Type className="w-4 h-4" />
+                </button>
+
+                {/* Regex Toggle */}
+                <button
+                    onClick={onToggleRegex}
+                    className={`p-1.5 rounded ${useRegex ? 'bg-indigo-600 text-white' : 'hover:bg-slate-700'
+                        }`}
+                    title="Use Regular Expression"
+                >
+                    <Hash className="w-4 h-4" />
+                </button>
+
                 {/* Replace Toggle */}
                 <button
                     onClick={onToggleReplace}
@@ -112,7 +142,21 @@ export const SearchWidget: React.FC<SearchWidgetProps> = ({
                         onChange={(e) => onReplaceChange(e.target.value)}
                         placeholder="Replace with..."
                         className="flex-1 bg-slate-900 text-white px-3 py-1.5 rounded-md border border-slate-700 focus:outline-none focus:border-indigo-500 text-sm"
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                onReplaceOne();
+                            }
+                        }}
                     />
+                    <button
+                        onClick={onReplaceOne}
+                        disabled={!searchTerm || totalMatches === 0}
+                        className="px-3 py-1.5 bg-indigo-500 text-white rounded-md text-sm font-medium hover:bg-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="Replace Current (Enter)"
+                    >
+                        Replace
+                    </button>
                     <button
                         onClick={onReplaceAll}
                         disabled={!searchTerm || totalMatches === 0}

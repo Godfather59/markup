@@ -87,3 +87,49 @@ export function formatXML(text: string, indent: string = '  '): string {
         throw new Error('Invalid XML: ' + (error as Error).message);
     }
 }
+
+/**
+ * Minify JSON by removing all whitespace
+ * @param text - JSON string
+ * @returns Minified JSON string
+ * @throws Error if JSON is invalid
+ */
+export function minifyJSON(text: string): string {
+    try {
+        const parsed = JSON.parse(text);
+        return JSON.stringify(parsed);
+    } catch (error) {
+        throw new Error('Invalid JSON: ' + (error as Error).message);
+    }
+}
+
+/**
+ * Minify XML by removing all unnecessary whitespace
+ * @param text - XML string
+ * @returns Minified XML string
+ * @throws Error if XML is invalid
+ */
+export function minifyXML(text: string): string {
+    try {
+        // Quick validation with DOMParser
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(text, 'text/xml');
+        const parserError = xmlDoc.querySelector('parsererror');
+        if (parserError) {
+            throw new Error('Invalid XML');
+        }
+
+        // Remove comments and unnecessary whitespace
+        let minified = text
+            .replace(/<!--[\s\S]*?-->/g, '') // Remove comments
+            .replace(/>\s+</g, '><') // Remove whitespace between tags
+            .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+            .replace(/>\s/g, '>') // Remove spaces after >
+            .replace(/\s</g, '<') // Remove spaces before <
+            .trim();
+
+        return minified;
+    } catch (error) {
+        throw new Error('Invalid XML: ' + (error as Error).message);
+    }
+}

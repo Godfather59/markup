@@ -4,12 +4,16 @@ interface KeyboardShortcutHandlers {
     onFormat: () => void;
     onToggleSearch: () => void;
     onClearSearch: () => void;
+    onUndo?: () => void;
+    onRedo?: () => void;
 }
 
 /**
  * Custom hook for keyboard shortcuts
  * - Ctrl/Cmd + F: Toggle Search/Replace (standard browser behavior)
  * - Ctrl/Cmd + B: Format/Beautify
+ * - Ctrl/Cmd + Z: Undo
+ * - Ctrl/Cmd + Shift + Z: Redo
  * - Esc: Clear Search
  */
 export function useKeyboardShortcuts(handlers: KeyboardShortcutHandlers) {
@@ -28,6 +32,18 @@ export function useKeyboardShortcuts(handlers: KeyboardShortcutHandlers) {
             if (modifierKey && event.key === 'b') {
                 event.preventDefault();
                 handlers.onFormat();
+            }
+
+            // Ctrl/Cmd + Z: Undo
+            if (modifierKey && event.key === 'z' && !event.shiftKey) {
+                event.preventDefault();
+                handlers.onUndo?.();
+            }
+
+            // Ctrl/Cmd + Shift + Z or Ctrl/Cmd + Y: Redo
+            if ((modifierKey && event.shiftKey && event.key === 'z') || (modifierKey && event.key === 'y')) {
+                event.preventDefault();
+                handlers.onRedo?.();
             }
 
             // Esc: Clear Search
