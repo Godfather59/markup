@@ -11,6 +11,14 @@ function formatJSON(text: string): string {
 // Format XML with proper indentation (Regex-based, Worker-safe)
 function formatXML(text: string): string {
     try {
+        // Quick validation with DOMParser
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(text, 'text/xml');
+        const parserError = xmlDoc.querySelector('parsererror');
+        if (parserError) {
+            throw new Error('Invalid XML');
+        }
+
         // Fast regex-based formatting
         let formatted = text;
 

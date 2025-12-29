@@ -23,6 +23,26 @@ export const Editor: React.FC<EditorProps> = ({
     currentMatchIndex,
 }) => {
     const viewRef = React.useRef<EditorView | null>(null);
+    const containerRef = React.useRef<HTMLDivElement | null>(null);
+    const [height, setHeight] = React.useState('100%');
+
+    // Calculate height based on container
+    React.useEffect(() => {
+        const updateHeight = () => {
+            if (containerRef.current) {
+                const rect = containerRef.current.getBoundingClientRect();
+                setHeight(`${rect.height}px`);
+            }
+        };
+
+        updateHeight();
+        const resizeObserver = new ResizeObserver(updateHeight);
+        if (containerRef.current) {
+            resizeObserver.observe(containerRef.current);
+        }
+
+        return () => resizeObserver.disconnect();
+    }, []);
 
     const extensions = useMemo(() => {
         const langExtension = language === 'json' ? json() : xml();
@@ -74,10 +94,10 @@ export const Editor: React.FC<EditorProps> = ({
     }, [currentMatchIndex, matches]);
 
     return (
-        <div className="flex-1 overflow-hidden">
+        <div ref={containerRef} className="flex-1 min-h-0 overflow-hidden">
             <CodeMirror
                 value={value}
-                height="100%"
+                height={height}
                 theme={oneDark}
                 extensions={extensions}
                 onChange={onChange}
