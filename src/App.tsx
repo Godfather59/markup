@@ -80,7 +80,7 @@ function App() {
     });
 
     workerRef.current.onmessage = (e) => {
-      const { type, content: formattedContent, language: detectedLang, error } = e.data;
+      const { type, content: formattedContent, language: detectedLang } = e.data;
 
       if (type === 'success') {
         setContent(formattedContent);
