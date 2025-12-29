@@ -1,7 +1,7 @@
 import React from 'react';
 import { X, Settings } from 'lucide-react';
-import { LanguageType } from './LanguageSelector';
-import { IndentationType } from './IndentationSelector';
+import type { LanguageType } from './LanguageSelector';
+import type { IndentationType } from './IndentationSelector';
 
 interface SettingsPanelProps {
     isOpen: boolean;

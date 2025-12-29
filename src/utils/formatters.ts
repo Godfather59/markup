@@ -157,10 +157,6 @@ export function minifyXML(text: string): string {
  */
 export function formatHTML(text: string, indent: string = '  '): string {
     try {
-        // Use DOMParser to parse and format HTML
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(text, 'text/html');
-        
         // Simple formatting using XML formatter (HTML is similar to XML)
         return formatXML(text, indent);
     } catch (error) {
@@ -218,12 +214,12 @@ export function formatCSS(text: string, indent: string = '  '): string {
  * @param indent - Indentation (number of spaces)
  * @returns Formatted YAML string
  */
-export function formatYAML(text: string, indent: number = 2): string {
+export async function formatYAML(text: string, indent: number = 2): Promise<string> {
     try {
         // Import js-yaml dynamically to avoid bundle bloat
-        const yaml = require('js-yaml');
+        const yaml = await import('js-yaml');
         const obj = yaml.load(text);
-        return yaml.dump(obj, { indent: indent, lineWidth: -1 });
+        return yaml.dump(obj, { indent: indent, lineWidth: -1 }) as string;
     } catch (error) {
         throw new Error('Invalid YAML: ' + (error as Error).message);
     }
@@ -253,11 +249,11 @@ export function minifyCSS(text: string): string {
 /**
  * Minify YAML
  */
-export function minifyYAML(text: string): string {
+export async function minifyYAML(text: string): Promise<string> {
     try {
-        const yaml = require('js-yaml');
+        const yaml = await import('js-yaml');
         const obj = yaml.load(text);
-        return yaml.dump(obj, { indent: 0, lineWidth: -1, noRefs: true });
+        return yaml.dump(obj, { indent: 0, lineWidth: -1, noRefs: true }) as string;
     } catch (error) {
         throw new Error('Invalid YAML: ' + (error as Error).message);
     }

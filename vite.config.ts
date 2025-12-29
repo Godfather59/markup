@@ -8,9 +8,27 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          'codemirror': ['@uiw/react-codemirror', '@codemirror/lang-json', '@codemirror/lang-xml', '@codemirror/lang-html', '@codemirror/lang-css', '@codemirror/lang-javascript', '@codemirror/theme-one-dark'],
-          'react-vendor': ['react', 'react-dom'],
+        manualChunks: (id) => {
+          // CodeMirror and its language packages
+          if (id.includes('@codemirror') || id.includes('@uiw/react-codemirror')) {
+            return 'codemirror';
+          }
+          // React and React DOM
+          if (id.includes('react') || id.includes('react-dom')) {
+            return 'react-vendor';
+          }
+          // Formatters utilities (lazy loaded)
+          if (id.includes('/utils/formatters')) {
+            return 'formatters';
+          }
+          // js-yaml library
+          if (id.includes('js-yaml')) {
+            return 'yaml-lib';
+          }
+          // Other node_modules
+          if (id.includes('node_modules')) {
+            return 'vendor';
+          }
         }
       }
     },

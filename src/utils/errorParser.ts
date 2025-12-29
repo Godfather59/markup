@@ -34,7 +34,7 @@ export function parseJSONError(error: Error, content: string): { message: string
 /**
  * Parse XML error to extract line number
  */
-export function parseXMLError(error: Error, content: string): { message: string; line?: number } {
+export function parseXMLError(error: Error, _content: string): { message: string; line?: number } {
     const message = error.message;
     
     // XML parser errors often include line numbers

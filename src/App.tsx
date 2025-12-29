@@ -1,18 +1,17 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, Suspense, lazy } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
 import { Header } from './components/Header';
 import { Editor } from './components/Editor';
-import { SearchWidget } from './components/SearchWidget';
 import { StatusBar } from './components/StatusBar';
-import { LoadingSpinner } from './components/LoadingSpinner';
-import { IndentationType } from './components/IndentationSelector';
-import { LanguageType } from './components/LanguageSelector';
-import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
-import { SettingsPanel } from './components/SettingsPanel';
-import { 
-  formatJSON, formatXML, formatHTML, formatCSS, formatYAML,
-  minifyJSON, minifyXML, minifyHTML, minifyCSS, minifyYAML 
-} from './utils/formatters';
+import type { IndentationType } from './components/IndentationSelector';
+import type { LanguageType } from './components/LanguageSelector';
+import { formatJSON, formatXML } from './utils/formatters';
+
+// Lazy load components that are not immediately visible
+const SearchWidget = lazy(() => import('./components/SearchWidget').then(m => ({ default: m.SearchWidget })));
+const LoadingSpinner = lazy(() => import('./components/LoadingSpinner').then(m => ({ default: m.LoadingSpinner })));
+const KeyboardShortcutsModal = lazy(() => import('./components/KeyboardShortcutsModal').then(m => ({ default: m.KeyboardShortcutsModal })));
+const SettingsPanel = lazy(() => import('./components/SettingsPanel').then(m => ({ default: m.SettingsPanel })));
 import { findMatches, replaceAll, replaceOne } from './utils/search';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
@@ -101,8 +100,8 @@ function App() {
     return indent === 2 ? 2 : 4;
   }, [indent]);
 
-  // Format handler
-  const handleFormat = useCallback(() => {
+  // Format handler with dynamic imports for less common formatters
+  const handleFormat = useCallback(async () => {
     if (!content.trim()) {
       toast.error('Nothing to format');
       return;
@@ -120,15 +119,21 @@ function App() {
         case 'xml':
           formatted = formatXML(content, typeof indentValue === 'number' ? ' '.repeat(indentValue) : indentValue);
           break;
-        case 'html':
+        case 'html': {
+          const { formatHTML } = await import('./utils/formatters');
           formatted = formatHTML(content, typeof indentValue === 'number' ? ' '.repeat(indentValue) : indentValue);
           break;
-        case 'css':
+        }
+        case 'css': {
+          const { formatCSS } = await import('./utils/formatters');
           formatted = formatCSS(content, typeof indentValue === 'number' ? ' '.repeat(indentValue) : indentValue);
           break;
-        case 'yaml':
-          formatted = formatYAML(content, typeof indentValue === 'number' ? indentValue : 2);
+        }
+        case 'yaml': {
+          const { formatYAML } = await import('./utils/formatters');
+          formatted = await formatYAML(content, typeof indentValue === 'number' ? indentValue : 2);
           break;
+        }
         default:
           formatted = formatJSON(content, indentValue);
       }
@@ -142,8 +147,8 @@ function App() {
     }
   }, [content, language, getIndentString, updateContentWithHistory]);
 
-  // Minify handler
-  const handleMinify = useCallback(() => {
+  // Minify handler with dynamic imports
+  const handleMinify = useCallback(async () => {
     if (!content.trim()) {
       toast.error('Nothing to minify');
       return;
@@ -154,23 +159,35 @@ function App() {
       let minified: string;
       
       switch (language) {
-        case 'json':
+        case 'json': {
+          const { minifyJSON } = await import('./utils/formatters');
           minified = minifyJSON(content);
           break;
-        case 'xml':
+        }
+        case 'xml': {
+          const { minifyXML } = await import('./utils/formatters');
           minified = minifyXML(content);
           break;
-        case 'html':
+        }
+        case 'html': {
+          const { minifyHTML } = await import('./utils/formatters');
           minified = minifyHTML(content);
           break;
-        case 'css':
+        }
+        case 'css': {
+          const { minifyCSS } = await import('./utils/formatters');
           minified = minifyCSS(content);
           break;
-        case 'yaml':
-          minified = minifyYAML(content);
+        }
+        case 'yaml': {
+          const { minifyYAML } = await import('./utils/formatters');
+          minified = await minifyYAML(content);
           break;
-        default:
+        }
+        default: {
+          const { minifyJSON } = await import('./utils/formatters');
           minified = minifyJSON(content);
+        }
       }
       
       updateContentWithHistory(minified);
@@ -276,7 +293,7 @@ function App() {
     }
 
     // 2. Detect language and send to worker for background formatting
-    let detectedLang: 'json' | 'xml' | null = null;
+    let detectedLang: LanguageType | null = null;
 
     // Auto-detect language
     if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
@@ -522,25 +539,27 @@ function App() {
 
       {isSearchVisible && (
         <div className="relative">
-          <SearchWidget
-            searchTerm={searchTerm}
-            replaceTerm={replaceTerm}
-            isReplaceVisible={isReplaceVisible}
-            caseSensitive={caseSensitive}
-            useRegex={useRegex}
-            currentMatch={currentMatchIndex}
-            totalMatches={matches.length}
-            onSearchChange={setSearchTerm}
-            onReplaceChange={setReplaceTerm}
-            onToggleReplace={() => setIsReplaceVisible((prev) => !prev)}
-            onToggleCaseSensitive={() => setCaseSensitive((prev) => !prev)}
-            onToggleRegex={() => setUseRegex((prev) => !prev)}
-            onNext={handleNext}
-            onPrevious={handlePrevious}
-            onReplaceOne={handleReplaceOne}
-            onReplaceAll={handleReplaceAll}
-            onClose={() => setIsSearchVisible(false)}
-          />
+          <Suspense fallback={<div className="bg-slate-800 px-4 py-3 border-b border-slate-700">Loading search...</div>}>
+            <SearchWidget
+              searchTerm={searchTerm}
+              replaceTerm={replaceTerm}
+              isReplaceVisible={isReplaceVisible}
+              caseSensitive={caseSensitive}
+              useRegex={useRegex}
+              currentMatch={currentMatchIndex}
+              totalMatches={matches.length}
+              onSearchChange={setSearchTerm}
+              onReplaceChange={setReplaceTerm}
+              onToggleReplace={() => setIsReplaceVisible((prev) => !prev)}
+              onToggleCaseSensitive={() => setCaseSensitive((prev) => !prev)}
+              onToggleRegex={() => setUseRegex((prev) => !prev)}
+              onNext={handleNext}
+              onPrevious={handlePrevious}
+              onReplaceOne={handleReplaceOne}
+              onReplaceAll={handleReplaceAll}
+              onClose={() => setIsSearchVisible(false)}
+            />
+          </Suspense>
         </div>
       )}
 
@@ -568,18 +587,24 @@ function App() {
 
       <StatusBar characterCount={content.length} lineCount={lineCount} language={language} />
       
-      <LoadingSpinner isLoading={isLoading} />
-      <KeyboardShortcutsModal isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
-      <SettingsPanel
-        isOpen={showSettings}
-        onClose={() => setShowSettings(false)}
-        language={language}
-        indent={indent}
-        isDarkMode={isDarkMode}
-        onLanguageChange={setLanguage}
-        onIndentChange={setIndent}
-        onThemeChange={setIsDarkMode}
-      />
+      <Suspense fallback={null}>
+        <LoadingSpinner isLoading={isLoading} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <KeyboardShortcutsModal isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <SettingsPanel
+          isOpen={showSettings}
+          onClose={() => setShowSettings(false)}
+          language={language}
+          indent={indent}
+          isDarkMode={isDarkMode}
+          onLanguageChange={setLanguage}
+          onIndentChange={setIndent}
+          onThemeChange={setIsDarkMode}
+        />
+      </Suspense>
     </div>
   );
 }

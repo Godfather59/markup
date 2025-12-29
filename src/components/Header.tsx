@@ -1,7 +1,9 @@
 import React, { useRef } from 'react';
 import { Sparkles, Trash2, Search as SearchIcon, Copy, Download, Minus, Upload, Sun, Moon, Settings } from 'lucide-react';
-import { LanguageSelector, LanguageType } from './LanguageSelector';
-import { IndentationSelector, IndentationType } from './IndentationSelector';
+import { LanguageSelector } from './LanguageSelector';
+import type { LanguageType } from './LanguageSelector';
+import { IndentationSelector } from './IndentationSelector';
+import type { IndentationType } from './IndentationSelector';
 
 interface HeaderProps {
     language: LanguageType;

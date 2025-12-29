@@ -2,12 +2,9 @@ import React, { useMemo } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
 import { json } from '@codemirror/lang-json';
 import { xml } from '@codemirror/lang-xml';
-import { html } from '@codemirror/lang-html';
-import { css } from '@codemirror/lang-css';
-import { javascript } from '@codemirror/lang-javascript';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { EditorView } from '@codemirror/view';
-import { LanguageType } from './LanguageSelector';
+import type { LanguageType } from './LanguageSelector';
 
 interface EditorProps {
     value: string;
@@ -31,6 +28,10 @@ export const Editor: React.FC<EditorProps> = ({
     const viewRef = React.useRef<EditorView | null>(null);
     const containerRef = React.useRef<HTMLDivElement | null>(null);
     const [height, setHeight] = React.useState('100%');
+    const [langExtension, setLangExtension] = React.useState(() => {
+        // Default to JSON, will be updated when language changes
+        return json();
+    });
 
     // Calculate height based on container
     React.useEffect(() => {
@@ -50,28 +51,36 @@ export const Editor: React.FC<EditorProps> = ({
         return () => resizeObserver.disconnect();
     }, []);
 
-    const extensions = useMemo(() => {
-        let langExtension;
+    // Load language extensions dynamically
+    React.useEffect(() => {
         switch (language) {
             case 'json':
-                langExtension = json();
+                setLangExtension(json());
                 break;
             case 'xml':
-                langExtension = xml();
+                setLangExtension(xml());
                 break;
             case 'html':
-                langExtension = html();
+                import('@codemirror/lang-html').then(m => {
+                    setLangExtension(m.html());
+                });
                 break;
             case 'css':
-                langExtension = css();
+                import('@codemirror/lang-css').then(m => {
+                    setLangExtension(m.css());
+                });
                 break;
             case 'yaml':
-                // YAML uses JavaScript highlighting as fallback
-                langExtension = javascript();
+                import('@codemirror/lang-javascript').then(m => {
+                    setLangExtension(m.javascript());
+                });
                 break;
             default:
-                langExtension = json();
+                setLangExtension(json());
         }
+    }, [language]);
+
+    const extensions = useMemo(() => {
 
         // Custom paste handler to capture text for auto-detection
         // IMPORTANT: We return 'false' to allow CodeMirror's native paste behavior to continue
@@ -99,7 +108,7 @@ export const Editor: React.FC<EditorProps> = ({
                 },
             }),
         ];
-    }, [language, onPaste, isDarkMode]);
+    }, [langExtension, onPaste, isDarkMode]);
 
     // Handle paste event for auto-detection only
     // (Removed prop-based handler as we use the extension now)

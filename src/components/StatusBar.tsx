@@ -1,5 +1,5 @@
 import React from 'react';
-import { LanguageType } from './LanguageSelector';
+import type { LanguageType } from './LanguageSelector';
 
 interface StatusBarProps {
     characterCount: number;
