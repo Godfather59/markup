@@ -261,25 +261,30 @@ function App() {
 
   // Initialize worker
   React.useEffect(() => {
-    workerRef.current = new Worker(new URL('./workers/format.worker.ts', import.meta.url), {
-      type: 'module'
-    });
+    try {
+      workerRef.current = new Worker(new URL('./workers/format.worker.ts', import.meta.url), {
+        type: 'module'
+      });
 
-    workerRef.current.onmessage = (e) => {
-      const { type, content: formattedContent, language: detectedLang } = e.data;
+      workerRef.current.onmessage = (e) => {
+        const { type, content: formattedContent, language: detectedLang } = e.data;
 
-      if (type === 'success') {
-        updateContentWithHistory(formattedContent);
-        toast.success(`${detectedLang.toUpperCase()} formatted!`);
-      } else if (type === 'error') {
-        // Just show error, content is already raw
-        // toast.error(error); // Optional: don't spam errors on invalid partial pastes
-      }
-    };
+        if (type === 'success') {
+          updateContentWithHistory(formattedContent);
+          toast.success(`${detectedLang.toUpperCase()} formatted!`);
+        } else if (type === 'error') {
+          // Just show error, content is already raw
+          // toast.error(error); // Optional: don't spam errors on invalid partial pastes
+        }
+      };
 
-    return () => {
-      workerRef.current?.terminate();
-    };
+      return () => {
+        workerRef.current?.terminate();
+      };
+    } catch (error) {
+      console.error('Failed to initialize worker:', error);
+      toast.error('Worker initialization failed. Some features may be disabled.');
+    }
   }, []);
 
   // Auto-detection and formatting on paste
