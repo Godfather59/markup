@@ -6,6 +6,7 @@ interface KeyboardShortcutHandlers {
     onClearSearch: () => void;
     onUndo?: () => void;
     onRedo?: () => void;
+    onToggleHelp?: () => void;
 }
 
 /**
@@ -49,6 +50,11 @@ export function useKeyboardShortcuts(handlers: KeyboardShortcutHandlers) {
             // Esc: Clear Search
             if (event.key === 'Escape') {
                 handlers.onClearSearch();
+            }
+
+            // ?: Toggle Help
+            if (event.key === '?' && !modifierKey && !event.shiftKey) {
+                handlers.onToggleHelp?.();
             }
         };
 

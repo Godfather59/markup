@@ -1,13 +1,13 @@
 import React, { useRef } from 'react';
-import { Sparkles, Trash2, Search as SearchIcon, Copy, Download, Minus, Upload, Sun, Moon } from 'lucide-react';
-import { LanguageSelector } from './LanguageSelector';
+import { Sparkles, Trash2, Search as SearchIcon, Copy, Download, Minus, Upload, Sun, Moon, Settings } from 'lucide-react';
+import { LanguageSelector, LanguageType } from './LanguageSelector';
 import { IndentationSelector, IndentationType } from './IndentationSelector';
 
 interface HeaderProps {
-    language: 'json' | 'xml';
+    language: LanguageType;
     indent: IndentationType;
     isDarkMode: boolean;
-    onLanguageChange: (language: 'json' | 'xml') => void;
+    onLanguageChange: (language: LanguageType) => void;
     onIndentChange: (indent: IndentationType) => void;
     onFormat: () => void;
     onMinify: () => void;
@@ -17,6 +17,7 @@ interface HeaderProps {
     onDownload: () => void;
     onFileUpload: (file: File) => void;
     onToggleTheme: () => void;
+    onOpenSettings: () => void;
     isSearchVisible: boolean;
     hasContent: boolean;
 }
@@ -35,6 +36,7 @@ export const Header: React.FC<HeaderProps> = ({
     onDownload,
     onFileUpload,
     onToggleTheme,
+    onOpenSettings,
     isSearchVisible,
     hasContent,
 }) => {
@@ -110,6 +112,14 @@ export const Header: React.FC<HeaderProps> = ({
                     title="Toggle Theme"
                 >
                     {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                </button>
+
+                <button
+                    onClick={onOpenSettings}
+                    className="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-all"
+                    title="Settings"
+                >
+                    <Settings className="w-5 h-5" />
                 </button>
 
                 <button

@@ -6,13 +6,21 @@ import { SearchWidget } from './components/SearchWidget';
 import { StatusBar } from './components/StatusBar';
 import { LoadingSpinner } from './components/LoadingSpinner';
 import { IndentationType } from './components/IndentationSelector';
-import { formatJSON, formatXML, minifyJSON, minifyXML } from './utils/formatters';
+import { LanguageType } from './components/LanguageSelector';
+import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
+import { SettingsPanel } from './components/SettingsPanel';
+import { 
+  formatJSON, formatXML, formatHTML, formatCSS, formatYAML,
+  minifyJSON, minifyXML, minifyHTML, minifyCSS, minifyYAML 
+} from './utils/formatters';
 import { findMatches, replaceAll, replaceOne } from './utils/search';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
 function App() {
   const [content, setContent] = useState('');
-  const [language, setLanguage] = useState<'json' | 'xml'>('json');
+  const [language, setLanguage] = useState<LanguageType>('json');
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [indent, setIndent] = useState<IndentationType>(2);
   const [searchTerm, setSearchTerm] = useState('');
   const [replaceTerm, setReplaceTerm] = useState('');
@@ -43,6 +51,11 @@ function App() {
     if (savedIndent) setIndent(savedIndent);
     if (savedTheme === 'light') setIsDarkMode(false);
   }, []);
+
+  // Apply theme to document root
+  React.useEffect(() => {
+    document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
+  }, [isDarkMode]);
 
   // Save to localStorage
   React.useEffect(() => {
@@ -98,9 +111,28 @@ function App() {
     setIsLoading(true);
     try {
       const indentValue = getIndentString();
-      const formatted = language === 'json' 
-        ? formatJSON(content, indentValue) 
-        : formatXML(content, typeof indentValue === 'number' ? ' '.repeat(indentValue) : indentValue);
+      let formatted: string;
+      
+      switch (language) {
+        case 'json':
+          formatted = formatJSON(content, indentValue);
+          break;
+        case 'xml':
+          formatted = formatXML(content, typeof indentValue === 'number' ? ' '.repeat(indentValue) : indentValue);
+          break;
+        case 'html':
+          formatted = formatHTML(content, typeof indentValue === 'number' ? ' '.repeat(indentValue) : indentValue);
+          break;
+        case 'css':
+          formatted = formatCSS(content, typeof indentValue === 'number' ? ' '.repeat(indentValue) : indentValue);
+          break;
+        case 'yaml':
+          formatted = formatYAML(content, typeof indentValue === 'number' ? indentValue : 2);
+          break;
+        default:
+          formatted = formatJSON(content, indentValue);
+      }
+      
       updateContentWithHistory(formatted);
       toast.success(`${language.toUpperCase()} formatted successfully!`);
     } catch (error) {
@@ -119,7 +151,28 @@ function App() {
 
     setIsLoading(true);
     try {
-      const minified = language === 'json' ? minifyJSON(content) : minifyXML(content);
+      let minified: string;
+      
+      switch (language) {
+        case 'json':
+          minified = minifyJSON(content);
+          break;
+        case 'xml':
+          minified = minifyXML(content);
+          break;
+        case 'html':
+          minified = minifyHTML(content);
+          break;
+        case 'css':
+          minified = minifyCSS(content);
+          break;
+        case 'yaml':
+          minified = minifyYAML(content);
+          break;
+        default:
+          minified = minifyJSON(content);
+      }
+      
       updateContentWithHistory(minified);
       toast.success(`${language.toUpperCase()} minified successfully!`);
     } catch (error) {
@@ -225,15 +278,32 @@ function App() {
     // 2. Detect language and send to worker for background formatting
     let detectedLang: 'json' | 'xml' | null = null;
 
+    // Auto-detect language
     if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
       detectedLang = 'json';
       setLanguage('json');
-    } else if (trimmed.startsWith('<')) {
+    } else if (trimmed.startsWith('<?xml') || (trimmed.startsWith('<') && trimmed.includes('</'))) {
       detectedLang = 'xml';
       setLanguage('xml');
+    } else if (trimmed.startsWith('<!DOCTYPE') || (trimmed.startsWith('<html') || trimmed.startsWith('<div'))) {
+      detectedLang = 'html';
+      setLanguage('html');
+    } else if (trimmed.includes('{') && trimmed.includes('}') && trimmed.includes(':')) {
+      // Could be CSS or JSON, check for CSS selectors
+      if (trimmed.match(/[a-zA-Z-]+\s*\{/)) {
+        detectedLang = 'css';
+        setLanguage('css');
+      } else {
+        detectedLang = 'json';
+        setLanguage('json');
+      }
+    } else if (trimmed.includes(':') && !trimmed.includes('{') && !trimmed.includes('<')) {
+      detectedLang = 'yaml';
+      setLanguage('yaml');
     }
 
-    if (detectedLang && workerRef.current) {
+    // Only auto-format JSON and XML for now (worker limitation)
+    if ((detectedLang === 'json' || detectedLang === 'xml') && workerRef.current) {
       // Send to worker - this happens off the main thread!
       workerRef.current.postMessage({
         type: 'format',
@@ -399,6 +469,7 @@ function App() {
     onClearSearch: handleClearSearch,
     onUndo: handleUndo,
     onRedo: handleRedo,
+    onToggleHelp: () => setShowShortcuts(prev => !prev),
   });
 
   return (
@@ -444,6 +515,7 @@ function App() {
         onDownload={handleDownload}
         onFileUpload={handleFileUpload}
         onToggleTheme={() => setIsDarkMode(prev => !prev)}
+        onOpenSettings={() => setShowSettings(true)}
         isSearchVisible={isSearchVisible}
         hasContent={!!content.trim()}
       />
@@ -475,6 +547,7 @@ function App() {
       <Editor
         value={content}
         language={language}
+        isDarkMode={isDarkMode}
         onChange={(newContent) => {
           setContent(newContent);
           // Update history for typing
@@ -496,6 +569,17 @@ function App() {
       <StatusBar characterCount={content.length} lineCount={lineCount} language={language} />
       
       <LoadingSpinner isLoading={isLoading} />
+      <KeyboardShortcutsModal isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
+      <SettingsPanel
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        language={language}
+        indent={indent}
+        isDarkMode={isDarkMode}
+        onLanguageChange={setLanguage}
+        onIndentChange={setIndent}
+        onThemeChange={setIsDarkMode}
+      />
     </div>
   );
 }

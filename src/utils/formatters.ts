@@ -148,3 +148,117 @@ export function minifyXML(text: string): string {
         throw new Error('Invalid XML: ' + (error as Error).message);
     }
 }
+
+/**
+ * Format HTML with proper indentation
+ * @param text - Raw HTML string
+ * @param indent - Indentation string (e.g., '  ', '    ', '\t')
+ * @returns Formatted HTML string
+ */
+export function formatHTML(text: string, indent: string = '  '): string {
+    try {
+        // Use DOMParser to parse and format HTML
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(text, 'text/html');
+        
+        // Simple formatting using XML formatter (HTML is similar to XML)
+        return formatXML(text, indent);
+    } catch (error) {
+        throw new Error('Invalid HTML: ' + (error as Error).message);
+    }
+}
+
+/**
+ * Format CSS with proper indentation
+ * @param text - Raw CSS string
+ * @param indent - Indentation string (e.g., '  ', '    ', '\t')
+ * @returns Formatted CSS string
+ */
+export function formatCSS(text: string, indent: string = '  '): string {
+    try {
+        let formatted = text;
+        let indentLevel = 0;
+        const lines: string[] = [];
+        
+        // Remove existing whitespace
+        formatted = formatted.replace(/\s*{\s*/g, ' { ').replace(/\s*}\s*/g, ' } ').replace(/\s*;\s*/g, '; ');
+        
+        // Split by braces and semicolons
+        const parts = formatted.split(/([{};])/);
+        
+        for (const part of parts) {
+            const trimmed = part.trim();
+            if (!trimmed) continue;
+            
+            if (trimmed === '{') {
+                lines.push(indent.repeat(indentLevel) + trimmed);
+                indentLevel++;
+            } else if (trimmed === '}') {
+                indentLevel = Math.max(0, indentLevel - 1);
+                lines.push(indent.repeat(indentLevel) + trimmed);
+            } else if (trimmed === ';') {
+                const lastLine = lines[lines.length - 1];
+                if (lastLine && !lastLine.endsWith(';') && !lastLine.endsWith('{') && !lastLine.endsWith('}')) {
+                    lines[lines.length - 1] = lastLine + ';';
+                }
+            } else {
+                lines.push(indent.repeat(indentLevel) + trimmed);
+            }
+        }
+        
+        return lines.join('\n');
+    } catch (error) {
+        throw new Error('Invalid CSS: ' + (error as Error).message);
+    }
+}
+
+/**
+ * Format YAML with proper indentation
+ * @param text - Raw YAML string
+ * @param indent - Indentation (number of spaces)
+ * @returns Formatted YAML string
+ */
+export function formatYAML(text: string, indent: number = 2): string {
+    try {
+        // Import js-yaml dynamically to avoid bundle bloat
+        const yaml = require('js-yaml');
+        const obj = yaml.load(text);
+        return yaml.dump(obj, { indent: indent, lineWidth: -1 });
+    } catch (error) {
+        throw new Error('Invalid YAML: ' + (error as Error).message);
+    }
+}
+
+/**
+ * Minify HTML
+ */
+export function minifyHTML(text: string): string {
+    return minifyXML(text); // HTML minification is similar to XML
+}
+
+/**
+ * Minify CSS
+ */
+export function minifyCSS(text: string): string {
+    return text
+        .replace(/\/\*[\s\S]*?\*\//g, '') // Remove comments
+        .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+        .replace(/\s*{\s*/g, '{') // Remove spaces around {
+        .replace(/\s*}\s*/g, '}') // Remove spaces around }
+        .replace(/\s*;\s*/g, ';') // Remove spaces around ;
+        .replace(/\s*:\s*/g, ':') // Remove spaces around :
+        .trim();
+}
+
+/**
+ * Minify YAML
+ */
+export function minifyYAML(text: string): string {
+    try {
+        const yaml = require('js-yaml');
+        const obj = yaml.load(text);
+        return yaml.dump(obj, { indent: 0, lineWidth: -1, noRefs: true });
+    } catch (error) {
+        throw new Error('Invalid YAML: ' + (error as Error).message);
+    }
+}

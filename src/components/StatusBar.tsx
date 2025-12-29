@@ -1,9 +1,10 @@
 import React from 'react';
+import { LanguageType } from './LanguageSelector';
 
 interface StatusBarProps {
     characterCount: number;
     lineCount: number;
-    language: 'json' | 'xml';
+    language: LanguageType;
 }
 
 export const StatusBar: React.FC<StatusBarProps> = ({ characterCount, lineCount, language }) => {
