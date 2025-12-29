@@ -17,6 +17,7 @@ interface SearchWidgetProps {
     onNext: () => void;
     onPrevious: () => void;
     onReplaceOne: () => void;
+    onReplaceOneAndNext: () => void;
     onReplaceAll: () => void;
     onClose: () => void;
 }
@@ -37,6 +38,7 @@ export const SearchWidget: React.FC<SearchWidgetProps> = ({
     onNext,
     onPrevious,
     onReplaceOne,
+    onReplaceOneAndNext,
     onReplaceAll,
     onClose,
 }) => {
@@ -145,7 +147,7 @@ export const SearchWidget: React.FC<SearchWidgetProps> = ({
                         onKeyDown={(e) => {
                             if (e.key === 'Enter' && !e.shiftKey) {
                                 e.preventDefault();
-                                onReplaceOne();
+                                onReplaceOneAndNext();
                             }
                         }}
                     />
@@ -153,14 +155,22 @@ export const SearchWidget: React.FC<SearchWidgetProps> = ({
                         onClick={onReplaceOne}
                         disabled={!searchTerm || totalMatches === 0}
                         className="px-3 py-1.5 bg-indigo-500 text-white rounded-md text-sm font-medium hover:bg-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed"
-                        title="Replace Current (Enter)"
+                        title="Replace Current"
                     >
                         Replace
                     </button>
                     <button
-                        onClick={onReplaceAll}
+                        onClick={onReplaceOneAndNext}
                         disabled={!searchTerm || totalMatches === 0}
                         className="px-3 py-1.5 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="Replace & Find Next (Enter)"
+                    >
+                        Replace & Next
+                    </button>
+                    <button
+                        onClick={onReplaceAll}
+                        disabled={!searchTerm || totalMatches === 0}
+                        className="px-3 py-1.5 bg-indigo-700 text-white rounded-md text-sm font-medium hover:bg-indigo-800 disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                         Replace All
                     </button>

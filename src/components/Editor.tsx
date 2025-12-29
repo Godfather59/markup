@@ -14,6 +14,8 @@ interface EditorProps {
     matches: Array<{ from: number; to: number }>;
     currentMatchIndex: number;
     isDarkMode: boolean;
+    fontSize: number;
+    wordWrap: boolean;
 }
 
 export const Editor: React.FC<EditorProps> = ({
@@ -24,6 +26,8 @@ export const Editor: React.FC<EditorProps> = ({
     matches,
     currentMatchIndex,
     isDarkMode,
+    fontSize,
+    wordWrap,
 }) => {
     const viewRef = React.useRef<EditorView | null>(null);
     const containerRef = React.useRef<HTMLDivElement | null>(null);
@@ -98,17 +102,29 @@ export const Editor: React.FC<EditorProps> = ({
             langExtension,
             pasteHandler,
             EditorView.theme({
+                '&': {
+                    fontSize: `${fontSize}px`,
+                },
+                '.cm-content': {
+                    fontFamily: 'Monaco, Menlo, "Ubuntu Mono", Consolas, "source-code-pro", monospace',
+                },
                 '.cm-search-match': {
-                    backgroundColor: isDarkMode ? 'rgba(251, 191, 36, 0.3)' : 'rgba(251, 191, 36, 0.2)',
-                    outline: `1px solid ${isDarkMode ? 'rgba(251, 191, 36, 0.5)' : 'rgba(251, 191, 36, 0.7)'}`,
+                    backgroundColor: isDarkMode ? 'rgba(251, 191, 36, 0.25)' : 'rgba(251, 191, 36, 0.15)',
+                    outline: `2px solid ${isDarkMode ? 'rgba(251, 191, 36, 0.6)' : 'rgba(217, 119, 6, 0.8)'}`,
+                    borderRadius: '2px',
+                    padding: '1px 2px',
                 },
                 '.cm-search-match-active': {
-                    backgroundColor: isDarkMode ? 'rgba(251, 191, 36, 0.5)' : 'rgba(251, 191, 36, 0.4)',
-                    outline: `2px solid ${isDarkMode ? 'rgb(251, 191, 36)' : 'rgb(217, 119, 6)'}`,
+                    backgroundColor: isDarkMode ? 'rgba(251, 191, 36, 0.5)' : 'rgba(251, 191, 36, 0.35)',
+                    outline: `3px solid ${isDarkMode ? 'rgb(251, 191, 36)' : 'rgb(217, 119, 6)'}`,
+                    borderRadius: '2px',
+                    padding: '1px 2px',
+                    fontWeight: '600',
                 },
             }),
+            wordWrap ? EditorView.lineWrapping : [],
         ];
-    }, [langExtension, onPaste, isDarkMode]);
+    }, [langExtension, onPaste, isDarkMode, fontSize, wordWrap]);
 
     // Handle paste event for auto-detection only
     // (Removed prop-based handler as we use the extension now)

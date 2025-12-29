@@ -55,15 +55,15 @@ export const Header: React.FC<HeaderProps> = ({
         }
     };
     return (
-        <div className="flex items-center justify-between px-6 py-4 bg-slate-900 border-b border-slate-800">
+        <div className="flex items-center justify-between px-6 py-4 bg-slate-900 dark:bg-slate-900 bg-white border-b border-slate-800 dark:border-slate-800 border-gray-200">
             {/* Logo and Title */}
             <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
                     <Sparkles className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                    <h1 className="text-xl font-bold text-white">Markup Beautifier</h1>
-                    <p className="text-xs text-slate-400">Format JSON & XML with ease</p>
+                    <h1 className="text-xl font-bold text-white dark:text-white text-gray-900">Markup Beautifier</h1>
+                    <p className="text-xs text-slate-400 dark:text-slate-400 text-gray-600">Format JSON & XML with ease</p>
                 </div>
             </div>
 

@@ -30,6 +30,8 @@ function App() {
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
+  const [fontSize, setFontSize] = useState(14);
+  const [wordWrap, setWordWrap] = useState(false);
   
   // Undo/Redo history
   const [history, setHistory] = useState<string[]>(['']);
@@ -38,9 +40,11 @@ function App() {
   // Load from localStorage on mount
   React.useEffect(() => {
     const saved = localStorage.getItem('markup-beautifier-content');
-    const savedLanguage = localStorage.getItem('markup-beautifier-language') as 'json' | 'xml' | null;
+    const savedLanguage = localStorage.getItem('markup-beautifier-language') as LanguageType | null;
     const savedIndent = localStorage.getItem('markup-beautifier-indent') as IndentationType | null;
     const savedTheme = localStorage.getItem('markup-beautifier-theme');
+    const savedFontSize = localStorage.getItem('markup-beautifier-fontSize');
+    const savedWordWrap = localStorage.getItem('markup-beautifier-wordWrap');
     
     if (saved) {
       setContent(saved);
@@ -49,6 +53,8 @@ function App() {
     if (savedLanguage) setLanguage(savedLanguage);
     if (savedIndent) setIndent(savedIndent);
     if (savedTheme === 'light') setIsDarkMode(false);
+    if (savedFontSize) setFontSize(Number(savedFontSize));
+    if (savedWordWrap === 'true') setWordWrap(true);
   }, []);
 
   // Apply theme to document root
@@ -60,16 +66,24 @@ function App() {
   React.useEffect(() => {
     if (content) {
       localStorage.setItem('markup-beautifier-content', content);
-      localStorage.setItem('markup-beautifier-language', language);
-      localStorage.setItem('markup-beautifier-indent', String(indent));
-      localStorage.setItem('markup-beautifier-theme', isDarkMode ? 'dark' : 'light');
     }
-  }, [content, language, indent, isDarkMode]);
+    localStorage.setItem('markup-beautifier-language', language);
+    localStorage.setItem('markup-beautifier-indent', String(indent));
+    localStorage.setItem('markup-beautifier-theme', isDarkMode ? 'dark' : 'light');
+    localStorage.setItem('markup-beautifier-fontSize', String(fontSize));
+    localStorage.setItem('markup-beautifier-wordWrap', String(wordWrap));
+  }, [content, language, indent, isDarkMode, fontSize, wordWrap]);
 
   // Calculate line count
   const lineCount = useMemo(() => {
     if (!content) return 0;
     return content.split('\n').length;
+  }, [content]);
+
+  // Calculate word count
+  const wordCount = useMemo(() => {
+    if (!content.trim()) return 0;
+    return content.trim().split(/\s+/).filter(word => word.length > 0).length;
   }, [content]);
 
   // Compute matches
@@ -347,8 +361,28 @@ function App() {
     }
   }, [matches.length]);
 
-  // Replace one
+  // Replace one (stay at current position)
   const handleReplaceOne = useCallback(() => {
+    if (!searchTerm || matches.length === 0) return;
+
+    const result = replaceOne(content, searchTerm, replaceTerm, currentMatchIndex, matches);
+    updateContentWithHistory(result.content);
+    
+    // Recalculate matches after replacement
+    const newMatches = findMatches(result.content, searchTerm, caseSensitive, useRegex);
+    setCurrentMatchIndex(Math.min(currentMatchIndex, newMatches.length - 1));
+    
+    if (newMatches.length === 0) {
+      toast.success('Replaced (no more matches)');
+      setSearchTerm('');
+      setReplaceTerm('');
+    } else {
+      toast.success(`Replaced (${newMatches.length} remaining)`);
+    }
+  }, [content, searchTerm, replaceTerm, currentMatchIndex, matches, caseSensitive, useRegex, updateContentWithHistory]);
+
+  // Replace one and move to next
+  const handleReplaceOneAndNext = useCallback(() => {
     if (!searchTerm || matches.length === 0) return;
 
     const result = replaceOne(content, searchTerm, replaceTerm, currentMatchIndex, matches);
@@ -555,8 +589,9 @@ function App() {
               onToggleRegex={() => setUseRegex((prev) => !prev)}
               onNext={handleNext}
               onPrevious={handlePrevious}
-              onReplaceOne={handleReplaceOne}
-              onReplaceAll={handleReplaceAll}
+            onReplaceOne={handleReplaceOne}
+            onReplaceOneAndNext={handleReplaceOneAndNext}
+            onReplaceAll={handleReplaceAll}
               onClose={() => setIsSearchVisible(false)}
             />
           </Suspense>
@@ -567,6 +602,8 @@ function App() {
         value={content}
         language={language}
         isDarkMode={isDarkMode}
+        fontSize={fontSize}
+        wordWrap={wordWrap}
         onChange={(newContent) => {
           setContent(newContent);
           // Update history for typing
@@ -585,7 +622,7 @@ function App() {
         currentMatchIndex={currentMatchIndex}
       />
 
-      <StatusBar characterCount={content.length} lineCount={lineCount} language={language} />
+      <StatusBar characterCount={content.length} lineCount={lineCount} wordCount={wordCount} language={language} />
       
       <Suspense fallback={null}>
         <LoadingSpinner isLoading={isLoading} />
@@ -601,9 +638,13 @@ function App() {
           indent={indent}
           isDarkMode={isDarkMode}
           onLanguageChange={setLanguage}
-          onIndentChange={setIndent}
-          onThemeChange={setIsDarkMode}
-        />
+        onIndentChange={setIndent}
+        onThemeChange={setIsDarkMode}
+        fontSize={fontSize}
+        wordWrap={wordWrap}
+        onFontSizeChange={setFontSize}
+        onWordWrapChange={setWordWrap}
+      />
       </Suspense>
     </div>
   );

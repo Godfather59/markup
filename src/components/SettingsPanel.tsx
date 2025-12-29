@@ -9,9 +9,13 @@ interface SettingsPanelProps {
     language: LanguageType;
     indent: IndentationType;
     isDarkMode: boolean;
+    fontSize: number;
+    wordWrap: boolean;
     onLanguageChange: (language: LanguageType) => void;
     onIndentChange: (indent: IndentationType) => void;
     onThemeChange: (isDark: boolean) => void;
+    onFontSizeChange: (size: number) => void;
+    onWordWrapChange: (wrap: boolean) => void;
 }
 
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({
@@ -20,9 +24,13 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     language,
     indent,
     isDarkMode,
+    fontSize,
+    wordWrap,
     onLanguageChange,
     onIndentChange,
     onThemeChange,
+    onFontSizeChange,
+    onWordWrapChange,
 }) => {
     if (!isOpen) return null;
 
@@ -78,6 +86,44 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                             <option value={4}>4 Spaces</option>
                             <option value="tab">Tab</option>
                         </select>
+                    </div>
+
+                    {/* Font Size Setting */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-2">
+                            Font Size: <span className="text-indigo-400">{fontSize}px</span>
+                        </label>
+                        <input
+                            type="range"
+                            min="10"
+                            max="24"
+                            value={fontSize}
+                            onChange={(e) => onFontSizeChange(Number(e.target.value))}
+                            className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                        />
+                        <div className="flex justify-between text-xs text-slate-400 mt-1">
+                            <span>10px</span>
+                            <span>24px</span>
+                        </div>
+                    </div>
+
+                    {/* Word Wrap Setting */}
+                    <div>
+                        <label className="flex items-center justify-between cursor-pointer">
+                            <span className="text-sm font-medium text-slate-300">Word Wrap</span>
+                            <button
+                                onClick={() => onWordWrapChange(!wordWrap)}
+                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                                    wordWrap ? 'bg-indigo-600' : 'bg-slate-700'
+                                }`}
+                            >
+                                <span
+                                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                        wordWrap ? 'translate-x-6' : 'translate-x-1'
+                                    }`}
+                                />
+                            </button>
+                        </label>
                     </div>
 
                     {/* Theme Setting */}
