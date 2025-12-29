@@ -45,7 +45,7 @@ export const Header: React.FC<HeaderProps> = ({
                             ? 'bg-indigo-600 text-white'
                             : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
                         }`}
-                    title="Toggle Search (Ctrl+H)"
+                    title="Toggle Search (Ctrl+F)"
                 >
                     <SearchIcon className="w-5 h-5" />
                 </button>
@@ -53,7 +53,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <button
                     onClick={onFormat}
                     className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all font-medium"
-                    title="Format (Ctrl+F)"
+                    title="Format (Ctrl+B)"
                 >
                     <Sparkles className="w-4 h-4" />
                     Beautify

@@ -8,8 +8,8 @@ interface KeyboardShortcutHandlers {
 
 /**
  * Custom hook for keyboard shortcuts
- * - Ctrl/Cmd + F: Format/Beautify
- * - Ctrl/Cmd + H: Toggle Search/Replace
+ * - Ctrl/Cmd + F: Toggle Search/Replace (standard browser behavior)
+ * - Ctrl/Cmd + B: Format/Beautify
  * - Esc: Clear Search
  */
 export function useKeyboardShortcuts(handlers: KeyboardShortcutHandlers) {
@@ -18,16 +18,16 @@ export function useKeyboardShortcuts(handlers: KeyboardShortcutHandlers) {
             const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
             const modifierKey = isMac ? event.metaKey : event.ctrlKey;
 
-            // Ctrl/Cmd + F: Format
+            // Ctrl/Cmd + F: Toggle Search (standard browser find behavior)
             if (modifierKey && event.key === 'f') {
                 event.preventDefault();
-                handlers.onFormat();
+                handlers.onToggleSearch();
             }
 
-            // Ctrl/Cmd + H: Toggle Search
-            if (modifierKey && event.key === 'h') {
+            // Ctrl/Cmd + B: Format/Beautify
+            if (modifierKey && event.key === 'b') {
                 event.preventDefault();
-                handlers.onToggleSearch();
+                handlers.onFormat();
             }
 
             // Esc: Clear Search
